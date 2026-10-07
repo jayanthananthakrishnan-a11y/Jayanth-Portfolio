@@ -1,8 +1,8 @@
-# Prashanth's Portfolio: The File Cabinet
+# Jayanth's Portfolio: The File Cabinet
 
 A personal portfolio built as an interactive 3D archive room, where visitors pull a lamp chain, open cabinet drawers and read case files.
 
-Repository: https://github.com/coolprash06/Prashanth-Portfolio-Website
+Repository: https://github.com/coolprash06/Jayanth-Portfolio
 
 ## How it works
 
@@ -18,16 +18,15 @@ The landing copy fades in once the room is lit. The camera controls work the who
 
 ### Cabinets and drawers
 
-There are three filing cabinets behind the desk. Six drawers have typed labels and each holds a dossier:
+There are three filing cabinets behind the desk. Five drawers have typed labels and each holds a dossier:
 
-| Drawer       | Cabinet             | File No. |
-| ------------ | ------------------- | -------- |
-| MY RESUME    | Hero cabinet, 1st   | PR-000   |
-| PROJECTS     | Hero cabinet, 2nd   | PR-002   |
-| HACKATHONS   | Side cabinet, 1st   | PR-001   |
-| UI DESIGNS   | Side cabinet, 2nd   | PR-003   |
-| GRADES       | Side cabinet, 3rd   | PR-004   |
-| ARTICLES     | Left cabinet, 1st   | PR-005   |
+| Drawer                    | Cabinet           | File No. |
+| ------------------------- | ----------------- | -------- |
+| Resume                    | Hero cabinet, 1st | RS-001   |
+| Full Stack Projects (Web) | Hero cabinet, 2nd | FS-002   |
+| Mobile Applications       | Hero cabinet, 3rd | MA-003   |
+| Hackathon & Experience    | Side cabinet, 1st | HE-004   |
+| Research Areas            | Side cabinet, 2nd | RA-005   |
 
 Drawers without a label stay closed and can't be clicked. Each label, and each folder cover (subject, file number, sheet count, stamp), is drawn to a canvas texture from that dossier's own data.
 
@@ -52,7 +51,7 @@ Both modes use the same `DossierPage` component. Escape closes the dossier.
 
 ### The File Index
 
-The **File Index** button in the top bar (and the landing CTA) opens a list of every dossier. Clicking one opens it directly, with no drawer or folder steps. Twelve weekly case files (PR-006 to PR-017) are also listed and greyed out as `Pending`.
+The **File Index** button in the top bar (and the landing CTA) opens a list of every dossier. Clicking one opens it directly, with no drawer or folder steps.
 
 ### Without WebGL
 
@@ -79,8 +78,6 @@ If the browser has no WebGL, the 3D scene is never loaded. A flat CSS backdrop t
 **Prerequisites:** Node.js `^20.19.0` or `>=22.12.0` (required by Vite 8) and npm.
 
 ```bash
-git clone https://github.com/coolprash06/Prashanth-Portfolio-Website.git
-cd Prashanth-Portfolio-Website
 npm install
 npm run dev
 ```
@@ -116,7 +113,7 @@ src/
   App.jsx                   Top-level layout: 3D canvas (or fallback) + flat UI layers
   index.css                 Tailwind theme tokens and global styles
   data/
-    dossiers.js             All dossier content: pages, blocks, and the pending files list
+    dossiers.js             All dossier content: pages and blocks
     site.js                 Landing copy and file-prompt copy
   state/
     archiveStore.js         Zustand store: lamp, drawer/file sequence, open dossier, toggles
@@ -138,7 +135,7 @@ src/
     LandingOverlay.jsx      Landing copy shown once the lamp is on
     PullPrompt.jsx          "Pull the string" hint
     FilePrompt.jsx          Copy and buttons for the drawer and desk steps
-    FileIndex.jsx           List of all dossiers and pending files
+    FileIndex.jsx           List of all dossiers
     FlatBackdrop.jsx        Fallback shown when the 3D scene can't be shown
     SceneBoundary.jsx       Error boundary around the 3D scene
     dossier/
@@ -196,7 +193,7 @@ Add an object to the `DOSSIERS` array:
 }
 ```
 
-That's enough for it to show up in the File Index. If it takes a slot from the weekly case files, update `PENDING_FILES` at the bottom of the file too; they're numbered from PR-006.
+That's enough for it to show up in the File Index.
 
 ### Put a dossier in a drawer
 
@@ -211,7 +208,7 @@ That's enough for it to show up in the File Index. If it takes a slot from the w
    },
    ```
 
-2. In `src/scene/CameraRig.jsx`, add a camera pose for the new id under `FOCUS.drawer`. The existing entries show how each pose is the one above it dropped by one drawer height. If you leave this out, the camera falls back to the MY RESUME drawer's framing.
+2. In `src/scene/CameraRig.jsx`, add a camera pose for the new id under `FOCUS.drawer`. The existing entries show how each pose is the one above it dropped by one drawer height. If you leave this out, the camera falls back to the Resume drawer's framing.
 
 ## Reusable components
 

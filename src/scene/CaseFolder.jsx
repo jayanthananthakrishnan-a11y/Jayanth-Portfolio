@@ -4,6 +4,7 @@ import { MathUtils, Vector3 } from 'three'
 import { PALETTE } from '../lib/palette'
 import { QUALITY } from '../lib/capabilities'
 import { useArchive } from '../state/archiveStore'
+import { formatSheetCount, useSheetCount } from '../state/paginationStore'
 import { COVER_ASPECT, createCoverTexture } from './labelTexture'
 import { OVERHANG, Paperclip } from './Paperclip'
 
@@ -121,7 +122,14 @@ export function CaseFolder({ fileId, cover, restY, deskPose }) {
   // three clicks, and by then the third one has been spent.
   const interactive = mine && (fileStage === 'drawer' || fileStage === 'desk')
 
-  const coverMap = useMemo(() => createCoverTexture(cover), [cover])
+  /* The sheet count is typed onto the cover from the file's laid-out
+     sheets, which are only known once they have been measured and change
+     with the window - so the cover is repainted when it does. */
+  const sheets = formatSheetCount(useSheetCount(fileId))
+  const coverMap = useMemo(
+    () => createCoverTexture({ ...cover, sheets }),
+    [cover, sheets],
+  )
   useEffect(() => () => coverMap.dispose(), [coverMap])
 
   /* Scratch vectors, reused every frame rather than allocated in the loop. */

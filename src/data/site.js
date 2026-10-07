@@ -3,8 +3,8 @@
  * model lands in phase 3 (src/data/caseFiles.js).
  */
 export const SITE = {
-  name: 'Prashanth',
-  initials: 'p',
+  name: 'Jayanth',
+  initials: 'j',
   role: '3rd Year CS Student',
   department: 'Portfolio Website',
   archiveNumber: '001',
@@ -12,17 +12,17 @@ export const SITE = {
   ledger: ['Open a drawer, read a file', 'Every drawer holds a chapter'],
 
   intro: [
-    'Projects, Hackathons, Grades and Designs.',
+    'Projects, Apps, Research and Hackathons.',
     "Everything I've built, filed and on record.",
     'Pull the light and start reading.',
   ],
 
   location: {
-    label: 'AE',
-    coordinates: '25.20° N / 55.27° E',
+    label: 'IN',
+    coordinates: '13.55° N / 79.99° E',
   },
 
-  email: 'coolprash06@gmail.com',
+  email: 'jayanthananthakrishnan@gmail.com',
 
   cta: 'OPEN THE FILES',
   prompt: 'PULL THE STRING TO LIGHTEN UP THE ROOM',

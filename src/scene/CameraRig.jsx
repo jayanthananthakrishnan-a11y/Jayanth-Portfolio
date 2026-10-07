@@ -40,7 +40,7 @@ const HOME = {
 const FOCUS = {
   drawer: {
     // Looking down into the open top drawer of the hero cabinet.
-    'my-resume': {
+    resume: {
       position: [0.5, 4.76, 0.97],
       target: [0.5, 2.36, -2.1],
       fov: 34,
@@ -48,14 +48,22 @@ const FOCUS = {
     },
     // Looking down into the open second drawer of the hero cabinet: the
     // top-drawer pose dropped by one drawer height (0.5).
-    projects: {
+    'full-stack-projects': {
       position: [0.5, 4.26, 0.97],
       target: [0.5, 1.86, -2.1],
       fov: 34,
       shiftX: -0.38,
     },
+    // Looking down into the open third drawer of the hero cabinet: dropped
+    // by one more drawer height (0.5).
+    'mobile-applications': {
+      position: [0.5, 3.76, 0.97],
+      target: [0.5, 1.36, -2.1],
+      fov: 34,
+      shiftX: -0.38,
+    },
     // Looking down into the open top drawer of the side cabinet.
-    hackathons: {
+    'hackathon-experience': {
       position: [2.48, 4.52, 1.26],
       target: [3.21, 2.12, -1.72],
       fov: 34,
@@ -63,26 +71,9 @@ const FOCUS = {
     },
     // Looking down into the open second drawer of the side cabinet: the
     // top-drawer pose dropped by one drawer height (2.3 / 4 = 0.575).
-    'ui-designs': {
+    'research-areas': {
       position: [2.48, 3.945, 1.26],
       target: [3.21, 1.545, -1.72],
-      fov: 34,
-      shiftX: -0.38,
-    },
-    // Looking down into the open third drawer of the side cabinet: dropped
-    // by one more drawer height (0.575).
-    grades: {
-      position: [2.48, 3.37, 1.26],
-      target: [3.21, 0.97, -1.72],
-      fov: 34,
-      shiftX: -0.38,
-    },
-    // Looking down into the open top drawer of the left cabinet: the side
-    // cabinet's top-drawer pose, taken relative to its cabinet and carried
-    // onto this one (top drawer centre y = 1.9 - 1.9 / 6, turned 0.18).
-    articles: {
-      position: [-1.91, 4.09, 0.71],
-      target: [-2.46, 1.69, -2.31],
       fov: 34,
       shiftX: -0.38,
     },
@@ -143,7 +134,7 @@ function resolvePose(focusKey, drawerOut, portrait) {
   // safe onto a real framing rather than onto undefined.
   const preset =
     focusKey === 'drawer'
-      ? FOCUS.drawer[drawerOut] ?? FOCUS.drawer['my-resume']
+      ? FOCUS.drawer[drawerOut] ?? FOCUS.drawer.resume
       : FOCUS[focusKey]
   const target = new Vector3(...preset.target)
   const position = new Vector3(...preset.position)

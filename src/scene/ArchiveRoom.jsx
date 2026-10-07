@@ -14,12 +14,11 @@ import {
 const DESK_HEIGHT = 1.05
 const DESK_Z = 1.1
 
-const RESUME = getDossier('my-resume')
-const HACKATHONS = getDossier('hackathons')
-const PROJECTS = getDossier('projects')
-const UI_DESIGNS = getDossier('ui-designs')
-const GRADES = getDossier('grades')
-const ARTICLES = getDossier('articles')
+const RESUME = getDossier('resume')
+const FULL_STACK = getDossier('full-stack-projects')
+const MOBILE = getDossier('mobile-applications')
+const HACKATHON_EXPERIENCE = getDossier('hackathon-experience')
+const RESEARCH = getDossier('research-areas')
 
 /**
  * Where the personnel folder is set down when it leaves its drawer: on the
@@ -35,24 +34,38 @@ const FOLDER_ON_DESK = {
 }
 
 /** The cover typed onto each folder. Content comes from the dossier itself so
-    the cover and the first sheet can never disagree. */
+    the cover and the first sheet can never disagree. The sheet count is
+    added by CaseFolder, from the file's laid-out sheets. */
 function coverFor(dossier) {
   return {
     department: SITE.department,
     classification: dossier.classification,
     subject: dossier.subject,
     fileNumber: dossier.fileNumber,
-    sheets: String(dossier.pages.length).padStart(2, '0'),
     stamp: dossier.stamp,
   }
 }
 
-const RESUME_FOLDER_COVER = coverFor(RESUME)
-const HACKATHONS_FOLDER_COVER = coverFor(HACKATHONS)
-const PROJECTS_FOLDER_COVER = coverFor(PROJECTS)
-const UI_DESIGNS_FOLDER_COVER = coverFor(UI_DESIGNS)
-const GRADES_FOLDER_COVER = coverFor(GRADES)
-const ARTICLES_FOLDER_COVER = coverFor(ARTICLES)
+/** A filed drawer: its dossier's title on the plate, its cover in the tray. */
+function plateFor(dossier) {
+  return {
+    id: dossier.id,
+    label: dossier.title,
+    cover: coverFor(dossier),
+    deskPose: FOLDER_ON_DESK,
+  }
+}
+
+/* Built once, so the label and cover textures are not repainted per render. */
+const HERO_PLATES = {
+  0: plateFor(RESUME),
+  1: plateFor(FULL_STACK),
+  2: plateFor(MOBILE),
+}
+const SIDE_PLATES = {
+  0: plateFor(HACKATHON_EXPERIENCE),
+  1: plateFor(RESEARCH),
+}
 
 /**
  * Composition of the archive room. Camera framing assumes this layout, so move
@@ -65,75 +78,32 @@ export function ArchiveRoom() {
       <LightRig />
       <RoomShell />
 
-      {/* Cabinet bank behind the desk. The centre unit is the hero, and its
-          top drawer is the personnel file, with the projects file in the
-          drawer below it. The side cabinet to its right files the second
-          dossier in its own top drawer. Every other drawer stays blank until
-          the weekly case files are filed. */}
+      {/* Cabinet bank behind the desk. The centre unit is the hero: its
+          top drawer is the resume, with the full stack projects file below
+          it and the mobile applications file below that. The side cabinet
+          to its right files the hackathon & experience dossier in its top
+          drawer and research areas below it. Every other drawer stays blank. */}
       <FileCabinet
         position={[0.5, 0, -2.9]}
         drawers={5}
-        plates={{
-          0: {
-            id: RESUME.id,
-            label: RESUME.title,
-            cover: RESUME_FOLDER_COVER,
-            deskPose: FOLDER_ON_DESK,
-          },
-          1: {
-            id: PROJECTS.id,
-            label: PROJECTS.title,
-            cover: PROJECTS_FOLDER_COVER,
-            deskPose: FOLDER_ON_DESK,
-          },
-        }}
+        plates={HERO_PLATES}
       />
-      {/* Side cabinet, to the right of the hero unit. Its top drawer holds
-          the hackathons file, with the UI designs file in the drawer below
-          it and the grades file below that; the bottom drawer stays blank
-          until the weekly case files are filed. */}
+      {/* Side cabinet, to the right of the hero unit. The bottom two drawers
+          are blank. */}
       <FileCabinet
         position={[3.4, 0, -2.5]}
         rotation={[0, -0.24, 0]}
         drawers={4}
         height={2.3}
-        plates={{
-          0: {
-            id: HACKATHONS.id,
-            label: HACKATHONS.title,
-            cover: HACKATHONS_FOLDER_COVER,
-            deskPose: FOLDER_ON_DESK,
-          },
-          1: {
-            id: UI_DESIGNS.id,
-            label: UI_DESIGNS.title,
-            cover: UI_DESIGNS_FOLDER_COVER,
-            deskPose: FOLDER_ON_DESK,
-          },
-          2: {
-            id: GRADES.id,
-            label: GRADES.title,
-            cover: GRADES_FOLDER_COVER,
-            deskPose: FOLDER_ON_DESK,
-          },
-        }}
+        plates={SIDE_PLATES}
       />
-      {/* Left cabinet, behind the desk. Its top drawer files the articles;
-          the two below it stay blank. */}
+      {/* Left cabinet, behind the desk. All three drawers are blank. */}
       <FileCabinet
         position={[-2.6, 0, -3.1]}
         rotation={[0, 0.18, 0]}
         drawers={3}
         height={1.9}
         width={1.2}
-        plates={{
-          0: {
-            id: ARTICLES.id,
-            label: ARTICLES.title,
-            cover: ARTICLES_FOLDER_COVER,
-            deskPose: FOLDER_ON_DESK,
-          },
-        }}
       />
 
       <Desk position={[0, 0, DESK_Z]} height={DESK_HEIGHT} />

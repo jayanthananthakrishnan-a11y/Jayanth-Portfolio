@@ -35,20 +35,32 @@ function Chip({ children }) {
   )
 }
 
-function Bullets({ items }) {
+/* On a `tight` page the gap between items closes a step; the type and its
+   leading stay at the floor set above.
+   An item is a string, or `{ text, cont: true }` for the rest of a bullet
+   that was too long for one sheet and runs on from the sheet before: it
+   hangs at the same indent, with no marker of its own. */
+function Bullets({ items, tight }) {
   return (
-    <ul className="space-y-3.5">
-      {items.map((text) => (
-        <li key={text} className="grid grid-cols-[0.6rem_1fr] gap-x-3">
-          <span
-            aria-hidden="true"
-            className="mt-[0.62em] h-px w-2.5 bg-brass-500"
-          />
-          <span className="text-[0.9rem] leading-[1.9] text-ink-700">
-            {text}
-          </span>
-        </li>
-      ))}
+    <ul className={tight ? 'space-y-1.5' : 'space-y-3.5'}>
+      {items.map((item) => {
+        const { text, cont } = typeof item === 'string' ? { text: item } : item
+        return (
+          <li key={text} className="grid grid-cols-[0.6rem_1fr] gap-x-3">
+            <span
+              aria-hidden="true"
+              className={`mt-[0.62em] h-px w-2.5 bg-brass-500 ${cont ? 'invisible' : ''}`}
+            />
+            <span
+              className={`text-[0.9rem] text-ink-700 ${
+                tight ? 'leading-[1.8]' : 'leading-[1.9]'
+              }`}
+            >
+              {text}
+            </span>
+          </li>
+        )
+      })}
     </ul>
   )
 }
@@ -73,14 +85,19 @@ function LinkParts({ parts }) {
                 |
               </span>
             )}
-            <a
-              href={part.href}
-              target={newTab ? '_blank' : undefined}
-              rel={newTab ? 'noreferrer noopener' : undefined}
-              className="underline decoration-ink-300 underline-offset-4 transition-colors hover:text-brass-500 hover:decoration-brass-500"
-            >
-              {part.text}
-            </a>
+            {/* A part with no address yet is set as plain text. */}
+            {part.href ? (
+              <a
+                href={part.href}
+                target={newTab ? '_blank' : undefined}
+                rel={newTab ? 'noreferrer noopener' : undefined}
+                className="underline decoration-ink-300 underline-offset-4 transition-colors hover:text-brass-500 hover:decoration-brass-500"
+              >
+                {part.text}
+              </a>
+            ) : (
+              <span>{part.text}</span>
+            )}
           </span>
         )
       })}
@@ -143,9 +160,11 @@ function Entry({ block, tight }) {
           their own line under the subtitle when the two will not fit. */}
       <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
         <div>
-          <h3 className="font-display text-[1.6rem] leading-[1.2] text-ink-900">
-            {block.title}
-          </h3>
+          {block.title && (
+            <h3 className="font-display text-[1.6rem] leading-[1.2] text-ink-900">
+              {block.title}
+            </h3>
+          )}
           {block.org && (
             <p className="mt-1.5 text-[0.9rem] italic leading-snug text-ink-700">
               {block.org}
@@ -162,13 +181,17 @@ function Entry({ block, tight }) {
         <p className="label mt-3 text-ink-500">{block.meta}</p>
       )}
 
-      <hr
-        className={`border-0 border-t border-ink-300/60 ${tight ? 'my-3' : 'my-5'}`}
-      />
+      {/* An entry with no title is the run of a list onto a sheet that
+          does not open with it, and has no heading to rule off. */}
+      {block.title && (
+        <hr
+          className={`border-0 border-t border-ink-300/60 ${tight ? 'my-3' : 'my-5'}`}
+        />
+      )}
 
       {/* Optional: an entry whose write-up is a print on the same sheet
           (an article clipping) carries no bullets of its own. */}
-      {block.bullets && <Bullets items={block.bullets} />}
+      {block.bullets && <Bullets items={block.bullets} tight={tight} />}
     </div>
   )
 }
@@ -183,13 +206,13 @@ function Chips({ block }) {
   )
 }
 
-function ChipGroups({ block }) {
+function ChipGroups({ block, tight }) {
   return (
-    <div className="space-y-6">
+    <div className={tight ? 'space-y-4' : 'space-y-6'}>
       {block.groups.map((group) => (
         <section key={group.label}>
           <GroupLabel>{group.label}</GroupLabel>
-          <ul className="flex flex-wrap gap-2">
+          <ul className={`flex flex-wrap ${tight ? 'gap-1.5' : 'gap-2'}`}>
             {group.items.map((item) => (
               <Chip key={item}>{item}</Chip>
             ))}
@@ -216,13 +239,13 @@ function Text({ block }) {
   )
 }
 
-function ListGroups({ block }) {
+function ListGroups({ block, tight }) {
   return (
-    <div className="space-y-8">
+    <div className={tight ? 'space-y-5' : 'space-y-8'}>
       {block.groups.map((group) => (
         <section key={group.label}>
           <GroupLabel>{group.label}</GroupLabel>
-          <Bullets items={group.items} />
+          <Bullets items={group.items} tight={tight} />
         </section>
       ))}
     </div>
@@ -236,8 +259,22 @@ function ListGroups({ block }) {
  *
  * `maxHeight` caps a print that would otherwise push its sheet past the page;
  * the frame shrinks with it rather than letterboxing the image.
+ *
+ * `displayHeight` (set by pagination, from the print's own `width` and
+ * `height`) prints it at exactly that height and the width that keeps its
+ * proportions, so its size is known before the file has loaded. The frame
+ * adds 18px across: a 1px hairline and 0.5rem of margin each side
+ * (PRINT_FRAME_X in flow.js).
  */
 function Image({ block }) {
+  const size = block.displayHeight
+    ? {
+        height: block.displayHeight,
+        width: (block.displayHeight * block.width) / block.height,
+      }
+    : block.maxHeight
+      ? { maxHeight: block.maxHeight }
+      : undefined
   return (
     <figure>
       <div className="w-fit max-w-full border border-ink-300/70 bg-cream-50/60 p-2">
@@ -245,7 +282,7 @@ function Image({ block }) {
           src={block.src}
           alt={block.alt}
           loading="lazy"
-          style={block.maxHeight ? { maxHeight: block.maxHeight } : undefined}
+          style={size}
           className="block h-auto max-w-full"
         />
       </div>

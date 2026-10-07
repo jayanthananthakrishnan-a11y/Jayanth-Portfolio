@@ -62,8 +62,10 @@ export function readingSheetId(page) {
  * This is the single page primitive for the whole archive - the paged spread
  * view and the Reading View both render this, so a page can never look like
  * two different things depending on where you read it. The only difference
- * between the two is `variant`, which relaxes the fixed aspect ratio in
- * Reading View so a long page grows instead of clipping.
+ * between the two is `variant`: a spread sheet fills its half of the spread,
+ * while a Reading View sheet is a fixed page in proportion to its width
+ * (US Letter, never under 36rem). Both have a fixed height because the
+ * sheets are paginated to it - see flow.js.
  *
  * Header and footer are metadata strips in the same tracked mono voice as the
  * room chrome (TopBar, CornerMeta), so the paper reads as part of the archive.
@@ -85,7 +87,9 @@ export function DossierPage({
       id={reading ? readingSheetId(page) : undefined}
       aria-label={`${dossier.title}, page ${pageNumber} of ${totalPages}`}
       className={`flex flex-col bg-cream-50 text-ink-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.75)] ${
-        reading ? 'min-h-[36rem] w-full scroll-mt-6 sm:scroll-mt-10' : 'h-full w-full'
+        reading
+          ? 'aspect-[17/22] min-h-[36rem] w-full scroll-mt-6 sm:scroll-mt-10'
+          : 'h-full w-full'
       }`}
     >
       {/* --- Header strip --------------------------------------------- */}
@@ -97,26 +101,31 @@ export function DossierPage({
       </header>
 
       {/* --- Body ------------------------------------------------------
-          Scrolls rather than clips if a page ever outgrows its sheet, so
-          content can never be silently lost at a small viewport. */}
+          Pagination sets only what fits, so this never scrolls in
+          practice; if a page ever did outgrow its sheet it would scroll
+          rather than clip, so content can never be silently lost.
+          `data-sheet-body` is what the pagination probe measures. */}
       <div
         ref={bodyRef}
-        className={`flex grow flex-col px-7 py-8 sm:px-9 ${tight ? '' : 'sm:py-10'} ${
-          reading ? '' : 'overflow-y-auto'
+        data-sheet-body=""
+        className={`flex min-h-0 grow flex-col overflow-y-auto px-7 py-8 sm:px-9 ${
+          tight ? '' : 'sm:py-10'
         }`}
       >
-        <div
-          className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 ${
-            tight ? 'mb-3' : spacing === 'compact' ? 'mb-5' : 'mb-7'
-          }`}
-        >
-          <h2 className="font-display text-[1.05rem] uppercase tracking-[0.2em] text-ink-900">
-            {page.title}
-          </h2>
-          {page.titleNote && (
-            <span className="label text-ink-500">({page.titleNote})</span>
-          )}
-        </div>
+        {page.title && (
+          <div
+            className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 ${
+              tight ? 'mb-3' : spacing === 'compact' ? 'mb-5' : 'mb-7'
+            }`}
+          >
+            <h2 className="font-display text-[1.05rem] uppercase tracking-[0.2em] text-ink-900">
+              {page.title}
+            </h2>
+            {page.titleNote && (
+              <span className="label text-ink-500">({page.titleNote})</span>
+            )}
+          </div>
+        )}
 
         {/* `compact` pages close the gap between blocks to the same step as
             the rows inside a `fields` block, so consecutive record blocks
@@ -162,10 +171,10 @@ export function DossierPage({
 }
 
 /**
- * The sheet that faces page 7 on the last spread.
+ * The sheet that faces the last page on the final spread.
  *
- * My Resume has an odd page count, so the final spread would otherwise show a
- * blank rectangle. A closing plate is quieter than an empty sheet and gives
+ * A dossier with an odd page count would otherwise show a blank rectangle
+ * there. A closing plate is quieter than an empty sheet and gives
  * the dossier an ending.
  *
  * It is a sheet of the same paper as the rest, not a panel of its own: cream
@@ -174,9 +183,7 @@ export function DossierPage({
  * a real sheet on the last spread. Rendered on the room's dark ground instead
  * it read as a hole in the dossier rather than as the end of it.
  */
-export function DossierEndPlate({ dossier }) {
-  const total = dossier.pages.length
-
+export function DossierEndPlate({ dossier, total }) {
   return (
     <aside
       aria-hidden="true"

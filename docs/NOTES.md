@@ -2,7 +2,7 @@
 > (filled drawers, SITE.location, the twelve-week framing) are out of date; see
 > [README.md](../README.md) for the current state.
 
-# Design Archive — Prashanth
+# Design Archive — Jayanth
 
 A 3D "archive room" portfolio for a twelve-week self-directed UI/UX project.
 Each week's design becomes a case file in the archive.
@@ -198,7 +198,7 @@ open far enough to look into. A canvas is used rather than a 3D text helper
 because those fetch a font at runtime, and the plate has to be readable the
 instant the lamp comes up.
 
-Only the hero cabinet's top drawer (`MY RESUME`) is filled.
+Only the hero cabinet's top drawer (`RESUME`) is filled.
 
 ### The file sequence
 

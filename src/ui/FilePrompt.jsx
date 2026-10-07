@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { FILE_SEQUENCE } from '../data/site'
 import { getDossier } from '../data/dossiers'
 import { useArchive } from '../state/archiveStore'
+import { formatSheetCount, useSheetCount } from '../state/paginationStore'
 import { ArchiveButton } from './ArchiveButton'
 
 /**
@@ -22,6 +23,7 @@ export function FilePrompt() {
   const liftFolder = useArchive((s) => s.liftFolder)
   const openFile = useArchive((s) => s.openFile)
   const returnFile = useArchive((s) => s.returnFile)
+  const sheetCount = useSheetCount(drawerOut)
 
   /* 'moving' and 'opening' show nothing: the closed cover is a beat of its own
      and must not be announced over a folder that is still in the air, and the
@@ -160,7 +162,7 @@ export function FilePrompt() {
             </span>
             <span aria-hidden="true" className="h-px w-6 bg-cream-400/40" />
             <span className="label text-cream-400">
-              {String(dossier.pages.length).padStart(2, '0')} sheets
+              {formatSheetCount(sheetCount)} sheets
             </span>
           </div>
         )}

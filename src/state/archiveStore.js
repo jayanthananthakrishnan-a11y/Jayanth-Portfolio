@@ -28,7 +28,7 @@ const START_STAGE = ['drawer', 'desk'].includes(PARAMS?.get('stage'))
 const START_LIT = Boolean(PARAMS?.has('lit')) || Boolean(START_STAGE)
 
 /** The one drawer in the room that is filled. See ArchiveRoom. */
-const HERO_FILE = 'my-resume'
+const HERO_FILE = 'resume'
 
 /**
  * Folder flight time, drawer to desk. Mirrors FOLDER_DAMP in scene/CaseFolder.

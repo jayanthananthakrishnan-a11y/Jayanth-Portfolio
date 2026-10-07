@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useArchive } from '../../state/archiveStore'
+import { useDossierPages } from '../../state/paginationStore'
 import { DossierEndPlate, DossierPage, readingSheetId } from './DossierPage'
 import { DossierNav } from './nav'
 
@@ -89,9 +90,119 @@ function ModeToggle({ mode, onChange }) {
   )
 }
 
+/*
+ * The layout pieces below are the dossier's frame, exported so the
+ * pagination probe (pagination.jsx) can stand the very same frame up off
+ * screen and measure a sheet that is exactly the size of the one on screen.
+ * A class changed here therefore changes what fits on a sheet, and the
+ * sheets are laid out again to match.
+ */
+
+/** The dialog's top bar: file number, title, view toggle and close. */
+export function DossierTopBar({ dossier, mode, onModeChange, onClose }) {
+  return (
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-cream-400/15 px-5 py-4 sm:px-8">
+      <div className="min-w-0">
+        <p className="label text-cream-400">
+          {dossier.fileNumber} &middot; {dossier.classification}
+        </p>
+        <h1 className="truncate font-display text-2xl italic leading-tight text-cream-50">
+          {dossier.title}
+        </h1>
+      </div>
+
+      <div className="flex items-center gap-3 sm:gap-4">
+        <ModeToggle mode={mode} onChange={onModeChange} />
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex size-11 items-center justify-center border border-cream-400/35 bg-forest-950/50 text-cream-200 backdrop-blur-sm transition-colors hover:border-brass-400/70 hover:text-cream-50"
+          aria-label="Close dossier"
+        >
+          <span aria-hidden="true" className="text-lg leading-none">
+            &times;
+          </span>
+        </button>
+      </div>
+    </header>
+  )
+}
+
+/**
+ * The paged spread: two sheet slots and, mid-turn, the leaf over them.
+ *
+ * The scroll gutter is reserved whether or not anything scrolls, so the
+ * sheets are the same width with a scrollbar and without one - the width
+ * they were laid out at.
+ */
+export function SpreadStage({ spreadRef, left, right, children }) {
+  return (
+    <div className="grow overflow-y-auto px-4 py-6 [scrollbar-gutter:stable_both-edges] sm:px-8 sm:py-8">
+      {/* Below md the two sheets stack and the column scrolls rather than
+          each sheet shrinking to half width - halving the measure on a
+          phone would break the legibility floor these pages are held to.
+          The leaf is hidden there for the same reason: with the sheets
+          stacked there is no gutter to hinge it on.
+
+          Perspective and the gutter width both live on this element (see
+          .dossier-spread in index.css) rather than on the two cells,
+          because the leaf hinges on the gutter's centre line and is a
+          child of this grid - one perspective, one spine, and a gap that
+          cannot drift away from the hinge. */}
+      <div
+        ref={spreadRef}
+        className="dossier-spread relative mx-auto grid max-w-6xl md:h-full md:grid-cols-2"
+      >
+        <div className="min-h-[34rem] md:h-full md:min-h-0">{left}</div>
+        <div className="min-h-[34rem] md:h-full md:min-h-0">{right}</div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/** Reading View: every sheet stacked in one scrolling column. */
+export function ReadingStage({ children }) {
+  return (
+    <div className="grow overflow-y-auto px-4 py-6 [scrollbar-gutter:stable_both-edges] sm:px-8 sm:py-10">
+      <div className="mx-auto flex max-w-3xl flex-col gap-6">{children}</div>
+    </div>
+  )
+}
+
+/** The page-turn controls and the X-Y / N counter under the spread. */
+export function PagerBar({ counter, onPrev, onNext, atStart, atEnd }) {
+  return (
+    <footer className="flex shrink-0 items-center justify-center gap-6 border-t border-cream-400/15 px-5 py-4">
+      <NavButton
+        label="Previous page"
+        glyph="&#8592;"
+        onClick={onPrev}
+        disabled={atStart}
+      />
+      <p
+        className="label min-w-24 text-center text-cream-200"
+        aria-live="polite"
+      >
+        {counter}
+      </p>
+      <NavButton
+        label="Next page"
+        glyph="&#8594;"
+        onClick={onNext}
+        disabled={atEnd}
+      />
+    </footer>
+  )
+}
+
 /* -------------------------------------------------------------------------- */
 /* View                                                                       */
 /* -------------------------------------------------------------------------- */
+
+/* Until the sheets have been laid out (a frame or two after load) the view
+   has none to show, rather than a set measured for some other window. */
+const NO_PAGES = []
 
 /**
  * The flat 2D dossier. Nothing in here touches the 3D scene; it is opened by
@@ -127,7 +238,9 @@ export function DossierView({ dossier, onClose }) {
    */
   const [nav, setNav] = useState({ spread: 0, counter: 0, turning: null })
 
-  const pages = dossier.pages
+  /* Laid out for this view at this window size - see pagination.jsx. A
+     resize or a switch of view can change how many sheets there are. */
+  const pages = useDossierPages(dossier.id, mode) ?? NO_PAGES
   const total = pages.length
   /* The closing plate takes the slot after the last sheet. With an odd count
      it faces the last sheet; with an even count it opens a spread of its own
@@ -178,6 +291,14 @@ export function DossierView({ dossier, onClose }) {
   )
 
   const turn = useCallback((dir) => goTo((from) => from + dir), [goTo])
+
+  /* The sheets are laid out again when the window changes size, and a
+     larger window can need fewer of them: the spread that was open may no
+     longer exist, so the paper falls back to the last one there is. */
+  if (spreadCount > 0 && nav.spread >= spreadCount && !nav.turning) {
+    const last = spreadCount - 1
+    setNav({ spread: last, counter: last, turning: null })
+  }
 
   /* The turn's clock. It lives in an effect rather than in `turn` so React
      owns the cleanup: a second turn, a mode switch or an unmount cancels the
@@ -284,8 +405,8 @@ export function DossierView({ dossier, onClose }) {
           pageNumber={i + 1}
           totalPages={total}
         />
-      ) : i === total ? (
-        <DossierEndPlate dossier={dossier} />
+      ) : i === total && total > 0 ? (
+        <DossierEndPlate dossier={dossier} total={total} />
       ) : null,
     [dossier, pages, total],
   )
@@ -349,123 +470,70 @@ export function DossierView({ dossier, onClose }) {
       className="dossier-open absolute inset-0 z-50 flex flex-col bg-forest-950/92 backdrop-blur-sm outline-none"
     >
       {/* --- Top bar ------------------------------------------------- */}
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-cream-400/15 px-5 py-4 sm:px-8">
-        <div className="min-w-0">
-          <p className="label text-cream-400">
-            {dossier.fileNumber} &middot; {dossier.classification}
-          </p>
-          <h1 className="truncate font-display text-2xl italic leading-tight text-cream-50">
-            {dossier.title}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-3 sm:gap-4">
-          <ModeToggle mode={mode} onChange={setMode} />
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-11 items-center justify-center border border-cream-400/35 bg-forest-950/50 text-cream-200 backdrop-blur-sm transition-colors hover:border-brass-400/70 hover:text-cream-50"
-            aria-label="Close dossier"
-          >
-            <span aria-hidden="true" className="text-lg leading-none">
-              &times;
-            </span>
-          </button>
-        </div>
-      </header>
+      <DossierTopBar
+        dossier={dossier}
+        mode={mode}
+        onModeChange={setMode}
+        onClose={onClose}
+      />
 
       {/* --- Paper --------------------------------------------------- */}
       <DossierNav.Provider value={navValue}>
         {mode === 'spread' ? (
-          <div className="grow overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
-            {/* Below md the two sheets stack and the column scrolls rather than
-                each sheet shrinking to half width - halving the measure on a
-                phone would break the legibility floor these pages are held to.
-                The leaf is hidden there for the same reason: with the sheets
-                stacked there is no gutter to hinge it on.
-
-                Perspective and the gutter width both live on this element (see
-                .dossier-spread in index.css) rather than on the two cells,
-                because the leaf hinges on the gutter's centre line and is a
-                child of this grid - one perspective, one spine, and a gap that
-                cannot drift away from the hinge. */}
-            <div
-              ref={spreadRef}
-              className="dossier-spread relative mx-auto grid max-w-6xl md:h-full md:grid-cols-2"
-            >
-              <div className="min-h-[34rem] md:h-full md:min-h-0">
-                {sheet(leftIndex)}
-              </div>
-
-              <div className="min-h-[34rem] md:h-full md:min-h-0">
-                {sheet(rightIndex)}
-              </div>
-
-              {leaf && (
-                /* Hidden from assistive tech: it is the same two sheets already
-                   in the tree underneath it, in motion. */
-                <div
-                  /* Keyed on the turn, so cutting in on one mid-swing remounts
-                     the leaf and its CSS animation begins again at the flat.
-                     Sharing the element would have let the new turn inherit the
-                     old one's angle - the paper would be lying past the
-                     vertical before the turn it belongs to had begun, showing
-                     the destination spread with no movement at all. */
-                  key={turning.seq}
-                  ref={leafRef}
-                  aria-hidden="true"
-                  className={`dossier-leaf hidden md:block ${
-                    forward ? 'dossier-leaf--fwd' : 'dossier-leaf--back'
-                  }`}
-                >
-                  <div className="dossier-leaf__face">{sheet(leaf.front)}</div>
-                  <div className="dossier-leaf__face dossier-leaf__face--back">
-                    {sheet(leaf.back)}
-                  </div>
+          <SpreadStage
+            spreadRef={spreadRef}
+            left={sheet(leftIndex)}
+            right={sheet(rightIndex)}
+          >
+            {leaf && (
+              /* Hidden from assistive tech: it is the same two sheets already
+                 in the tree underneath it, in motion. */
+              <div
+                /* Keyed on the turn, so cutting in on one mid-swing remounts
+                   the leaf and its CSS animation begins again at the flat.
+                   Sharing the element would have let the new turn inherit the
+                   old one's angle - the paper would be lying past the
+                   vertical before the turn it belongs to had begun, showing
+                   the destination spread with no movement at all. */
+                key={turning.seq}
+                ref={leafRef}
+                aria-hidden="true"
+                className={`dossier-leaf hidden md:block ${
+                  forward ? 'dossier-leaf--fwd' : 'dossier-leaf--back'
+                }`}
+              >
+                <div className="dossier-leaf__face">{sheet(leaf.front)}</div>
+                <div className="dossier-leaf__face dossier-leaf__face--back">
+                  {sheet(leaf.back)}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            )}
+          </SpreadStage>
         ) : (
-          <div className="grow overflow-y-auto px-4 py-6 sm:px-8 sm:py-10">
-            <div className="mx-auto flex max-w-3xl flex-col gap-6">
-              {pages.map((page, i) => (
-                <DossierPage
-                  key={page.id}
-                  page={page}
-                  dossier={dossier}
-                  pageNumber={i + 1}
-                  totalPages={total}
-                  variant="reading"
-                />
-              ))}
-            </div>
-          </div>
+          <ReadingStage>
+            {pages.map((page, i) => (
+              <DossierPage
+                key={page.id}
+                page={page}
+                dossier={dossier}
+                pageNumber={i + 1}
+                totalPages={total}
+                variant="reading"
+              />
+            ))}
+          </ReadingStage>
         )}
       </DossierNav.Provider>
 
       {/* --- Page-turn controls + counter ---------------------------- */}
       {mode === 'spread' && (
-        <footer className="flex shrink-0 items-center justify-center gap-6 border-t border-cream-400/15 px-5 py-4">
-          <NavButton
-            label="Previous page"
-            glyph="&#8592;"
-            onClick={() => turn(-1)}
-            disabled={atStart}
-          />
-          <p
-            className="label min-w-24 text-center text-cream-200"
-            aria-live="polite"
-          >
-            {counter}
-          </p>
-          <NavButton
-            label="Next page"
-            glyph="&#8594;"
-            onClick={() => turn(1)}
-            disabled={atEnd}
-          />
-        </footer>
+        <PagerBar
+          counter={counter}
+          onPrev={() => turn(-1)}
+          onNext={() => turn(1)}
+          atStart={atStart}
+          atEnd={atEnd}
+        />
       )}
     </div>
   )

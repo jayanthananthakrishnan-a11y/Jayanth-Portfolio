@@ -1,6 +1,6 @@
 import { SITE } from '../data/site'
 import { useArchive } from '../state/archiveStore'
-import prashanthPhoto from '../assets/prashanth-photo.png'
+import jayanthAvatar from '../assets/jayanth-avatar.jpg'
 
 function Toggle({ label, on, onClick }) {
   return (
@@ -33,8 +33,8 @@ export function TopBar({ onOpenIndex }) {
       <div className="flex items-center gap-3">
         <div className="size-11 shrink-0 overflow-hidden rounded-full border border-cream-400/35 bg-forest-950/40 backdrop-blur-sm">
           <img
-            src={prashanthPhoto}
-            alt={SITE.name}
+            src={jayanthAvatar}
+            alt="Jayanth"
             className="size-full object-cover"
           />
         </div>

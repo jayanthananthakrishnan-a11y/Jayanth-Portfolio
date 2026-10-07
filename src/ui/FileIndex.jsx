@@ -1,60 +1,40 @@
 import { useEffect, useRef } from 'react'
-import { DOSSIERS, PENDING_FILES } from '../data/dossiers'
+import { DOSSIERS } from '../data/dossiers'
 
-/**
- * Row in the index. Available files open their dossier; the weekly case files
- * that have not been made yet render as inert rows rather than being hidden,
- * so the index reads as an archive with one drawer filled rather than a list
- * with a single entry.
- */
-function IndexRow({ file, available, onOpen }) {
-  const Tag = available ? 'button' : 'div'
-
+/** Row in the index. Clicking it opens that dossier directly. */
+function IndexRow({ file, onOpen }) {
   return (
-    <Tag
-      {...(available
-        ? { type: 'button', onClick: () => onOpen(file.id) }
-        : { 'aria-disabled': 'true' })}
-      className={`group flex w-full items-baseline gap-4 border-b border-cream-400/15 px-1 py-5 text-left transition-colors sm:gap-6 ${
-        available
-          ? 'cursor-pointer hover:border-brass-400/50 hover:bg-cream-50/5'
-          : 'opacity-40'
-      }`}
+    <button
+      type="button"
+      onClick={() => onOpen(file.id)}
+      className="group flex w-full cursor-pointer items-baseline gap-4 border-b border-cream-400/15 px-1 py-5 text-left transition-colors hover:border-brass-400/50 hover:bg-cream-50/5 sm:gap-6"
     >
       <span className="label w-14 shrink-0 text-cream-400">
         {file.fileNumber}
       </span>
 
       <span className="min-w-0 grow">
-        <span
-          className={`block font-display text-xl leading-tight sm:text-2xl ${
-            available
-              ? 'text-cream-50 group-hover:text-brass-400'
-              : 'text-cream-200'
-          }`}
-        >
+        <span className="block font-display text-xl leading-tight text-cream-50 group-hover:text-brass-400 sm:text-2xl">
           {file.title}
         </span>
-        <span className="mt-1 block text-[0.8rem] leading-relaxed text-cream-400">
-          {file.summary}
-        </span>
+        {file.summary && (
+          <span className="mt-1 block text-[0.8rem] leading-relaxed text-cream-400">
+            {file.summary}
+          </span>
+        )}
       </span>
 
       <span className="label hidden shrink-0 text-cream-400 sm:block">
-        {available ? file.classification : 'Pending'}
+        {file.classification}
       </span>
 
       <span
         aria-hidden="true"
-        className={`shrink-0 transition-transform duration-300 ${
-          available
-            ? 'text-cream-400 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brass-400'
-            : 'text-cream-400/30'
-        }`}
+        className="shrink-0 text-cream-400 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brass-400"
       >
-        {available ? '↗' : '—'}
+        ↗
       </span>
-    </Tag>
+    </button>
   )
 }
 
@@ -105,15 +85,7 @@ export function FileIndex({ onClose, onOpenDossier }) {
       <div className="grow overflow-y-auto px-5 py-6 sm:px-8 sm:py-10">
         <div className="mx-auto max-w-3xl">
           {DOSSIERS.map((dossier) => (
-            <IndexRow
-              key={dossier.id}
-              file={dossier}
-              available
-              onOpen={onOpenDossier}
-            />
-          ))}
-          {PENDING_FILES.map((file) => (
-            <IndexRow key={file.id} file={file} available={false} />
+            <IndexRow key={dossier.id} file={dossier} onOpen={onOpenDossier} />
           ))}
         </div>
       </div>

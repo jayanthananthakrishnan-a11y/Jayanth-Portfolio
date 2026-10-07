@@ -33,6 +33,14 @@ const RULE = 'rgba(60, 52, 34, 0.35)'
  * run has to be measured with its tracking included either way, and older
  * canvas implementations have no `letterSpacing` to measure with.
  */
+function trackedWidths(ctx, text, { size, track, weight }) {
+  ctx.font = `${weight} ${size}px ${MONO}`
+  const chars = [...text.toUpperCase()]
+  const widths = chars.map((ch) => ctx.measureText(ch).width + track)
+  const total = widths.reduce((a, b) => a + b, 0) - track
+  return { chars, widths, total }
+}
+
 function tracked(
   ctx,
   text,
@@ -40,14 +48,10 @@ function tracked(
   y,
   { size = 20, track = 3.4, align = 'left', color = INK, weight = 400 } = {},
 ) {
-  ctx.font = `${weight} ${size}px ${MONO}`
+  const { chars, widths, total } = trackedWidths(ctx, text, { size, track, weight })
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
   ctx.fillStyle = color
-
-  const chars = [...text.toUpperCase()]
-  const widths = chars.map((ch) => ctx.measureText(ch).width + track)
-  const total = widths.reduce((a, b) => a + b, 0) - track
 
   let cursor = align === 'right' ? x - total : align === 'center' ? x - total / 2 : x
   chars.forEach((ch, i) => {
@@ -56,6 +60,26 @@ function tracked(
   })
 
   return total
+}
+
+/**
+ * Every way to break `text` at a space into two lines, best first: the break
+ * that leaves the longer of the two lines shortest, as measured by `measure`.
+ * A single word has no break and comes back as one line.
+ */
+function twoLineSplits(text, measure) {
+  const words = text.split(' ')
+  if (words.length < 2) return [[text]]
+  return words
+    .slice(1)
+    .map((_, i) => [
+      words.slice(0, i + 1).join(' '),
+      words.slice(i + 1).join(' '),
+    ])
+    .sort(
+      (a, b) =>
+        Math.max(...a.map(measure)) - Math.max(...b.map(measure)),
+    )
 }
 
 function rule(ctx, x1, y, x2, color = RULE, width = 2) {
@@ -114,6 +138,44 @@ export const PLATE_ASPECT = PLATE_W / PLATE_H
    screen at the room's default camera distance, so anything smaller stops
    being readable without zooming in. */
 const PLATE_FONT_SIZE = 80
+const PLATE_TRACK = 7
+/* A label too long for one line at PLATE_FONT_SIZE is set on two, which caps
+   the type at what two lines can share inside the rule. */
+const PLATE_TWO_LINE_SIZE = 58
+const PLATE_MIN_SIZE = 30
+/* Width the type may use: inside the hairline rule, with a margin. */
+const PLATE_TEXT_W = PLATE_W - 64
+
+/**
+ * Lays a label out on the plate: `{ lines, size, track }`. One line at full
+ * size where it fits; otherwise the most even two-line break, shrunk only as
+ * far as that break needs. Tracking scales with the size so a smaller label
+ * keeps the same voice.
+ */
+function fitPlateLabel(ctx, text) {
+  const opts = (size) => ({
+    size,
+    track: (PLATE_TRACK * size) / PLATE_FONT_SIZE,
+    weight: 500,
+  })
+  const width = (line, size) => trackedWidths(ctx, line, opts(size)).total
+
+  if (width(text, PLATE_FONT_SIZE) <= PLATE_TEXT_W || !text.includes(' ')) {
+    let size = PLATE_FONT_SIZE
+    while (width(text, size) > PLATE_TEXT_W && size > PLATE_MIN_SIZE) size -= 2
+    return { lines: [text], ...opts(size) }
+  }
+
+  const [lines] = twoLineSplits(text, (line) => width(line, PLATE_TWO_LINE_SIZE))
+  let size = PLATE_TWO_LINE_SIZE
+  while (
+    Math.max(...lines.map((line) => width(line, size))) > PLATE_TEXT_W &&
+    size > PLATE_MIN_SIZE
+  ) {
+    size -= 2
+  }
+  return { lines, ...opts(size) }
+}
 
 export function createLabelTexture(text) {
   return makeTexture(PLATE_W, PLATE_H, (ctx) => {
@@ -128,11 +190,16 @@ export function createLabelTexture(text) {
     ctx.lineWidth = 3
     ctx.strokeRect(10, 10, PLATE_W - 20, PLATE_H - 20)
 
-    tracked(ctx, text, PLATE_W / 2, PLATE_H / 2 + 4, {
-      size: PLATE_FONT_SIZE,
-      track: 7,
-      align: 'center',
-      weight: 500,
+    const { lines, size, track } = fitPlateLabel(ctx, text)
+    const leading = size * 1.05
+    const top = PLATE_H / 2 + 4 - (leading * (lines.length - 1)) / 2
+    lines.forEach((line, i) => {
+      tracked(ctx, line, PLATE_W / 2, top + leading * i, {
+        size,
+        track,
+        align: 'center',
+        weight: 500,
+      })
     })
   })
 }
@@ -190,17 +257,25 @@ export function createCoverTexture({
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
 
-    const words = subject.split(' ')
-    const lines = words.length > 1 ? [words[0], words.slice(1).join(' ')] : words
+    /* Set on up to two lines, broken where they come out most even, and
+       shrunk together until the longer line clears the margin - so a long
+       title never runs into the edge and its two lines match. */
+    const maxW = COVER_W - M * 2
+    const measure = (line, size) => {
+      ctx.font = `${size}px ${DISPLAY}`
+      return ctx.measureText(line).width
+    }
+    const [lines] = twoLineSplits(subject, (line) => measure(line, 76))
+    let size = 76
+    while (
+      Math.max(...lines.map((line) => measure(line, size))) > maxW &&
+      size > 30
+    ) {
+      size -= 2
+    }
+    ctx.font = `${size}px ${DISPLAY}`
     let y = 276
     lines.forEach((line) => {
-      let size = 76
-      ctx.font = `${size}px ${DISPLAY}`
-      // A long surname would otherwise run straight into the margin.
-      while (ctx.measureText(line).width > COVER_W - M * 2 && size > 30) {
-        size -= 2
-        ctx.font = `${size}px ${DISPLAY}`
-      }
       ctx.fillText(line, M, y)
       y += size + 8
     })
