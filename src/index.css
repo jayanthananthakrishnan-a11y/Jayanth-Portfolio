@@ -1,0 +1,296 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   Design tokens. The 3D scene imports the same hex values from lib/palette.js
+   so the lit room and the paper UI never drift apart.
+--------------------------------------------------------------------------- */
+@theme {
+  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Room */
+  --color-forest-950: #060d09;
+  --color-forest-900: #0a1610;
+  --color-forest-800: #112019;
+  --color-forest-700: #1a2f23;
+  --color-forest-600: #24402f;
+
+  /* Paper */
+  --color-cream-50: #f6f2e7;
+  --color-cream-100: #efe9db;
+  --color-cream-200: #e0d8c4;
+  --color-cream-400: #b3a98f;
+
+  /* Metal + light */
+  --color-brass-400: #d8b968;
+  --color-brass-500: #c29d45;
+  --color-lamp-glow: #ffd9a0;
+
+  /* Stamp ink. Mirrors PALETTE.stamp - the folder cover in the room and the
+     chip on the prompt beside it have to be the same red. */
+  --color-stamp-500: #a1472f;
+  --color-stamp-400: #c2634a;
+
+  /* Cabinet olive */
+  --color-olive-500: #7b8a56;
+  --color-olive-600: #5f6d42;
+
+  /* Ink on paper. Only used inside dossier pages, where the ground flips from
+     the dark room to cream and the contrast has to flip with it. Measured on
+     cream-50: ink-900 ~15.7:1, ink-700 (body copy) ~9.8:1, ink-500 (labels)
+     ~5.3:1 - so even the quietest text clears AA comfortably rather than just
+     passing. ink-300 is ~2.3:1 and is therefore rules and borders only, never
+     text. */
+  --color-ink-900: #1b1913;
+  --color-ink-700: #423c2e;
+  --color-ink-500: #6b6353;
+  --color-ink-300: #a8a08b;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-forest-900);
+    color: var(--color-cream-100);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+    /* The archive room is a fixed stage, not a scrolling page. */
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* Reading View (phase 3) re-enables scroll by setting this on <body>. */
+  body[data-scroll='on'] {
+    overflow: auto;
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-brass-400);
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  /* The small caps/tracked label voice used for every piece of metadata. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+}
+
+/* --- No-JS fallback (styled here so it inherits the page's typography) --- */
+.noscript-fallback {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+  font-family: var(--font-mono);
+  color: #efe9db;
+  line-height: 1.7;
+}
+.noscript-fallback h1 {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 400;
+  margin: 0;
+}
+.noscript-fallback .role {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #b3a98f;
+  margin-top: 0.25rem;
+}
+.noscript-fallback p {
+  font-size: 0.85rem;
+}
+.noscript-fallback a {
+  color: #d8b968;
+}
+
+/* --- Motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --- The down-arrow cue anchored to the pull-chain bead (drei <Html>) --- */
+.pull-cue {
+  color: var(--color-brass-400);
+  opacity: 0.75;
+  animation: pull-bob 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(216, 185, 104, 0.45));
+}
+
+@keyframes pull-bob {
+  0%,
+  100% {
+    transform: translateY(-2px);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(4px);
+    opacity: 0.95;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Dossier page turn.
+
+   The spread is a two-column grid with a gutter down the middle, and that
+   gutter is the file's spine. The turning leaf is an absolutely positioned
+   child of the grid rather than of either cell, which is what lets it be
+   hinged on the spine: `transform-origin` is pulled half a gutter outside the
+   leaf's own edge, onto the grid's centre line, so a 180 degree turn lands the
+   leaf exactly over the opposite cell instead of a gutter's width short of it.
+   One shared `perspective` on the grid puts the vanishing point on that same
+   centre line.
+
+   The leaf has two faces, not one. The front is the sheet lifting off; the
+   back is pre-rotated 180 degrees, so it is the sheet that has just been
+   uncovered by the time the leaf is face down. `backface-visibility` hides
+   whichever face is turned away, so the two swap over at the vertical and the
+   turn is continuous from end to end - the old single-sided leaf simply
+   vanished at 90 degrees and left the back half of the flip empty.
+
+   Duration lives here and must stay in sync with TURN_MS in
+   ui/dossier/DossierView.jsx, which schedules the commit.
+--------------------------------------------------------------------------- */
+.dossier-spread {
+  /* The gap and the hinge are the same measurement, so they are declared once
+     and the gap is derived from it. */
+  --dossier-gutter: 1.5rem;
+  --dossier-turn: 520ms;
+  gap: 1.25rem;
+  perspective: 2200px;
+}
+
+@media (width >= 48rem) {
+  .dossier-spread {
+    gap: var(--dossier-gutter);
+  }
+}
+
+.dossier-leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* Forward: the leaf starts over the right-hand cell and falls to the left. */
+.dossier-leaf--fwd {
+  left: calc(50% + var(--dossier-gutter) / 2);
+  right: 0;
+  transform-origin: calc(var(--dossier-gutter) / -2) center;
+  animation: page-turn-fwd var(--dossier-turn) cubic-bezier(0.37, 0.02, 0.25, 1)
+    forwards;
+}
+
+/* Back: the left-hand cell, falling to the right. */
+.dossier-leaf--back {
+  left: 0;
+  right: calc(50% + var(--dossier-gutter) / 2);
+  transform-origin: calc(100% + var(--dossier-gutter) / 2) center;
+  animation: page-turn-back var(--dossier-turn)
+    cubic-bezier(0.37, 0.02, 0.25, 1) forwards;
+}
+
+.dossier-leaf__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.8);
+}
+
+.dossier-leaf__face--back {
+  transform: rotateY(180deg);
+}
+
+/* A sheet edge-on catches less light. Zero at both ends of the turn, so the
+   leaf's first and last frames match the sheets it takes over from and hands
+   back to exactly - there is no step when it mounts or unmounts. */
+.dossier-leaf__face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 13, 9, 0.38);
+  animation: page-turn-shade var(--dossier-turn) linear forwards;
+  pointer-events: none;
+}
+
+@keyframes page-turn-fwd {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(-180deg);
+  }
+}
+
+@keyframes page-turn-back {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(180deg);
+  }
+}
+
+@keyframes page-turn-shade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Opening the file.
+
+   The cover turn happens in the room (see scene/CaseFolder) and the paper
+   takes over as it finishes, so this only has to carry the last of that
+   movement into the flat layer rather than cut to it.
+--------------------------------------------------------------------------- */
+.dossier-open {
+  animation: dossier-open 320ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes dossier-open {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Used by the dark-room prompt copy. */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "oxc", "typescript"],
+  "env": { "browser": true },
+  "rules": {},
+  "overrides": [
+    {
+      "files": ["src/scene/**/*.jsx"],
+      "rules": {
+        "react/immutability": "off"
+      }
+    }
+  ]
+}
